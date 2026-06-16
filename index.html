@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔍 事實偵探</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --fact-color: #1976D2;
+      --fact-light: #42A5F5;
+      --opinion-color: #E65100;
+      --opinion-light: #FF9800;
+      --correct: #2E7D32;
+      --wrong: #C62828;
+      --gold: #FFD700;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #0f0c29;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      font-family: 'Nunito', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Twinkling stars */
+    .stars {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.4); }
+    }
+
+    .screen {
+      display: none;
+      min-height: 100vh;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .screen.active { display: flex; }
+
+    /* ===================== WELCOME ===================== */
+    .welcome-mascot {
+      font-size: clamp(4rem, 12vw, 7rem);
+      margin-bottom: 8px;
+      animation: float 3s ease-in-out infinite;
+      filter: drop-shadow(0 10px 30px rgba(255,215,0,0.5));
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0) rotate(-3deg); }
+      50% { transform: translateY(-15px) rotate(3deg); }
+    }
+
+    .welcome-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(2.8rem, 9vw, 5.5rem);
+      background: linear-gradient(135deg, #FFD700, #FF9800, #FF6B35);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 4px 12px rgba(255,152,0,0.4));
+    }
+
+    .welcome-sub {
+      color: rgba(255,255,255,0.75);
+      font-size: clamp(0.9rem, 2.5vw, 1.15rem);
+      text-align: center;
+      margin-bottom: 28px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .info-card {
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 22px;
+      padding: 24px 28px;
+      max-width: 500px;
+      width: 100%;
+      margin-bottom: 28px;
+    }
+
+    .info-card h3 {
+      color: var(--gold);
+      font-size: 1.1rem;
+      margin-bottom: 14px;
+      font-weight: 900;
+    }
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      color: rgba(255,255,255,0.85);
+      font-size: 0.92rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 14px;
+      border-radius: 30px;
+      font-weight: 900;
+      font-size: 0.88rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-fact { background: var(--fact-color); color: white; }
+    .badge-opinion { background: var(--opinion-color); color: white; }
+
+    .info-note {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.55);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, #FFD700 0%, #FF9800 60%, #FF6B35 100%);
+      color: #1a0a00;
+      border: none;
+      border-radius: 50px;
+      padding: 18px 55px;
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.6rem;
+      cursor: pointer;
+      box-shadow: 0 8px 35px rgba(255,152,0,0.5), 0 0 0 0 rgba(255,215,0,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      animation: pulse-btn 2s ease-in-out infinite;
+    }
+    @keyframes pulse-btn {
+      0%,100% { box-shadow: 0 8px 35px rgba(255,152,0,0.5), 0 0 0 0 rgba(255,215,0,0.4); }
+      50% { box-shadow: 0 8px 35px rgba(255,152,0,0.5), 0 0 0 12px rgba(255,215,0,0); }
+    }
+    .btn-start:hover { transform: scale(1.06); }
+    .btn-start:active { transform: scale(0.97); }
+
+    /* ===================== GAME ===================== */
+    .game-topbar {
+      width: 100%;
+      max-width: 660px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+
+    .hud-chip {
+      border-radius: 14px;
+      padding: 7px 14px;
+      font-weight: 900;
+      font-size: clamp(0.8rem, 2vw, 1rem);
+      white-space: nowrap;
+    }
+    .chip-score {
+      background: rgba(255,215,0,0.15);
+      border: 2px solid rgba(255,215,0,0.4);
+      color: var(--gold);
+    }
+    .chip-progress {
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.8);
+      font-size: 0.82rem;
+    }
+    .chip-streak {
+      background: rgba(255,107,53,0.15);
+      border: 2px solid rgba(255,107,53,0.4);
+      color: #FF8A65;
+    }
+
+    .progress-track {
+      width: 100%;
+      max-width: 660px;
+      height: 9px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 9px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), #FF9800);
+      border-radius: 9px;
+      transition: width 0.6s cubic-bezier(.4,0,.2,1);
+    }
+
+    .q-card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 26px;
+      padding: 38px 32px;
+      max-width: 660px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 70px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+      margin-bottom: 22px;
+      position: relative;
+      overflow: hidden;
+      min-height: 165px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .q-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, #2196F3, #9C27B0, #FF9800, #4CAF50);
+    }
+    .q-num {
+      position: absolute;
+      top: 14px; left: 18px;
+      font-size: 0.75rem;
+      color: #bbb;
+      font-weight: 700;
+    }
+    .q-text {
+      font-size: clamp(1.05rem, 2.8vw, 1.5rem);
+      font-weight: 800;
+      color: #1a1a2e;
+      line-height: 1.55;
+      animation: slideUp 0.35s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .answer-row {
+      display: flex;
+      gap: 14px;
+      max-width: 660px;
+      width: 100%;
+    }
+
+    .btn-answer {
+      flex: 1;
+      border: none;
+      border-radius: 20px;
+      padding: 20px 12px;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(1rem, 3vw, 1.35rem);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+      position: relative;
+      overflow: hidden;
+      line-height: 1.3;
+    }
+    .btn-answer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .btn-answer:hover::after { opacity: 0.1; }
+    .btn-answer:active { transform: scale(0.96) !important; }
+    .btn-answer:disabled { cursor: default; filter: brightness(0.75); }
+
+    .btn-fact-ans {
+      background: linear-gradient(150deg, #1565C0, #1E88E5, #42A5F5);
+      color: white;
+      box-shadow: 0 8px 24px rgba(30,136,229,0.45);
+    }
+    .btn-fact-ans:not(:disabled):hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 14px 32px rgba(30,136,229,0.55);
+    }
+
+    .btn-opinion-ans {
+      background: linear-gradient(150deg, #BF360C, #E64A19, #FF7043);
+      color: white;
+      box-shadow: 0 8px 24px rgba(230,74,25,0.45);
+    }
+    .btn-opinion-ans:not(:disabled):hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 14px 32px rgba(230,74,25,0.55);
+    }
+
+    /* ===================== FEEDBACK ===================== */
+    .feedback-layer {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s;
+    }
+    .feedback-layer.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .feedback-layer.correct { background: rgba(27,94,32,0.9); }
+    .feedback-layer.wrong   { background: rgba(136,14,14,0.9); }
+
+    .fb-icon {
+      font-size: 5.5rem;
+      margin-bottom: 12px;
+      animation: popIn 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    .fb-label {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(2rem, 6vw, 3rem);
+      color: white;
+      text-shadow: 0 3px 12px rgba(0,0,0,0.3);
+      margin-bottom: 10px;
+    }
+    .fb-explain {
+      background: rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 12px 24px;
+      color: rgba(255,255,255,0.92);
+      font-size: clamp(0.88rem, 2.2vw, 1.05rem);
+      font-weight: 700;
+      text-align: center;
+      max-width: 460px;
+    }
+    @keyframes popIn {
+      0%   { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+      70%  { transform: scale(1.25) rotate(5deg); }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+
+    /* ===================== MILESTONE ===================== */
+    .milestone-layer {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      background: rgba(10,8,30,0.88);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .milestone-layer.show { opacity: 1; }
+
+    .ms-glow {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,215,0,0.25) 0%, transparent 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      animation: glowPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes glowPulse {
+      0%,100% { box-shadow: 0 0 40px rgba(255,215,0,0.3); }
+      50% { box-shadow: 0 0 80px rgba(255,215,0,0.6); }
+    }
+    .ms-emoji {
+      font-size: 7rem;
+      animation: spinPop 0.6s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes spinPop {
+      0%   { transform: scale(0) rotate(-180deg); }
+      80%  { transform: scale(1.2) rotate(10deg); }
+      100% { transform: scale(1) rotate(0); }
+    }
+    .ms-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(2rem, 7vw, 3.8rem);
+      background: linear-gradient(135deg, #FFD700, #FF9800);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 4px 16px rgba(255,152,0,0.5));
+    }
+    .ms-sub {
+      color: rgba(255,255,255,0.75);
+      font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+      font-weight: 700;
+      text-align: center;
+    }
+
+    /* ===================== END SCREEN ===================== */
+    .end-trophy {
+      font-size: clamp(3.5rem, 10vw, 6.5rem);
+      margin-bottom: 12px;
+      animation: float 3s ease-in-out infinite;
+    }
+    .end-score-big {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(4rem, 14vw, 8rem);
+      color: white;
+      line-height: 1;
+      margin-bottom: 0;
+    }
+    .end-score-label {
+      color: rgba(255,255,255,0.55);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 22px;
+    }
+    .rank-card {
+      background: rgba(255,255,255,0.07);
+      border: 2px solid rgba(255,215,0,0.3);
+      border-radius: 22px;
+      padding: 22px 32px;
+      text-align: center;
+      max-width: 420px;
+      width: 100%;
+      margin-bottom: 28px;
+    }
+    .rank-emoji { font-size: 3rem; margin-bottom: 8px; }
+    .rank-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+    .rank-desc {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .btn-again {
+      background: linear-gradient(135deg, #7B1FA2, #AB47BC, #E91E63);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 16px 48px;
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.45rem;
+      cursor: pointer;
+      box-shadow: 0 8px 30px rgba(171,71,188,0.45);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-again:hover { transform: scale(1.06); box-shadow: 0 12px 40px rgba(171,71,188,0.6); }
+    .btn-again:active { transform: scale(0.97); }
+
+    /* Confetti canvas */
+    #cvs {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 202;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Stars -->
+<div class="stars" id="stars"></div>
+
+<!-- Confetti Canvas -->
+<canvas id="cvs"></canvas>
+
+<!-- ==================== WELCOME ==================== -->
+<div class="screen active" id="s-welcome">
+  <div class="welcome-mascot">🔍</div>
+  <div class="welcome-title">事實偵探</div>
+  <div class="welcome-sub">訓練你的大腦，分辨事實與觀點！</div>
+
+  <div class="info-card">
+    <h3>📖 怎麼玩？</h3>
+    <div class="info-row">
+      <span class="badge badge-fact">⭐ 事實</span>
+      <span>可以查證，有具體證據支持的客觀陳述</span>
+    </div>
+    <div class="info-row">
+      <span class="badge badge-opinion">💭 觀點</span>
+      <span>根據個人感受或想法，不同人可以有不同意見</span>
+    </div>
+    <div class="info-note">共 100 題 · 每答對 1 題得 1 分 · 解鎖隱藏獎勵 🏆</div>
+  </div>
+
+  <button class="btn-start" onclick="startGame()">🚀 開始挑戰！</button>
+</div>
+
+<!-- ==================== GAME ==================== -->
+<div class="screen" id="s-game">
+  <div class="game-topbar">
+    <div class="hud-chip chip-score" id="hud-score">⭐ 0 分</div>
+    <div class="hud-chip chip-progress" id="hud-prog">第 1 題 / 100</div>
+    <div class="hud-chip chip-streak" id="hud-streak">🔥 連答 0</div>
+  </div>
+
+  <div class="progress-track">
+    <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+  </div>
+
+  <div class="q-card">
+    <div class="q-num" id="q-num">第 1 題</div>
+    <div class="q-text" id="q-text"></div>
+  </div>
+
+  <div class="answer-row">
+    <button class="btn-answer btn-fact-ans" id="btn-fact" onclick="answer('fact')">
+      ⭐<br>這是事實！
+    </button>
+    <button class="btn-answer btn-opinion-ans" id="btn-opinion" onclick="answer('opinion')">
+      💭<br>這是觀點！
+    </button>
+  </div>
+</div>
+
+<!-- ==================== END ==================== -->
+<div class="screen" id="s-end">
+  <div class="end-trophy" id="end-trophy">🏆</div>
+  <div class="end-score-big" id="end-score">0</div>
+  <div class="end-score-label">分 / 100 分</div>
+  <div class="rank-card">
+    <div class="rank-emoji" id="rank-emoji"></div>
+    <div class="rank-title" id="rank-title"></div>
+    <div class="rank-desc" id="rank-desc"></div>
+  </div>
+  <button class="btn-again" onclick="restartGame()">🔄 再玩一次！</button>
+</div>
+
+<!-- ==================== FEEDBACK ==================== -->
+<div class="feedback-layer" id="fb">
+  <div class="fb-icon" id="fb-icon"></div>
+  <div class="fb-label" id="fb-label"></div>
+  <div class="fb-explain" id="fb-explain"></div>
+</div>
+
+<!-- ==================== MILESTONE ==================== -->
+<div class="milestone-layer" id="ms">
+  <div class="ms-glow">
+    <div class="ms-emoji" id="ms-emoji"></div>
+  </div>
+  <div class="ms-title" id="ms-title"></div>
+  <div class="ms-sub" id="ms-sub"></div>
+</div>
+
+<script>
+// ── Stars ──────────────────────────────────────────────
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  const size = 1 + Math.random() * 2.5;
+  s.style.cssText = `width:${size}px;height:${size}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--dur:${2+Math.random()*4}s;--delay:${Math.random()*4}s`;
+  starsEl.appendChild(s);
+}
+
+// ── 100 Cases ──────────────────────────────────────────
+const ALL = [
+  // ★ 事實 (50)
+  { t:"地球繞太陽一圈需要365天。",          a:"fact" },
+  { t:"水在100°C時會沸騰。",                a:"fact" },
+  { t:"人類有206塊骨頭。",                  a:"fact" },
+  { t:"蝴蝶是從毛毛蟲變化而來的。",         a:"fact" },
+  { t:"台灣四面環海。",                     a:"fact" },
+  { t:"大象是陸地上最大的動物。",           a:"fact" },
+  { t:"魚用鰓呼吸。",                       a:"fact" },
+  { t:"月亮本身不會發光，靠反射太陽光才發亮。", a:"fact" },
+  { t:"植物需要陽光才能進行光合作用。",     a:"fact" },
+  { t:"一年有12個月。",                     a:"fact" },
+  { t:"蜘蛛有8條腿。",                      a:"fact" },
+  { t:"鑽石是已知最硬的天然物質。",         a:"fact" },
+  { t:"企鵝生活在南極。",                   a:"fact" },
+  { t:"彩虹有七種顏色。",                   a:"fact" },
+  { t:"太陽從東方升起。",                   a:"fact" },
+  { t:"氧氣是人類呼吸所需的氣體。",         a:"fact" },
+  { t:"蜜蜂會製造蜂蜜。",                   a:"fact" },
+  { t:"地球是太陽系第三顆行星。",           a:"fact" },
+  { t:"光速比聲速快得多。",                 a:"fact" },
+  { t:"雪是由水蒸氣凝固而成的。",           a:"fact" },
+  { t:"人類的血液是紅色的。",               a:"fact" },
+  { t:"台北是台灣的首都。",                 a:"fact" },
+  { t:"蚯蚓沒有腿。",                       a:"fact" },
+  { t:"蝙蝠用超聲波辨別方向。",             a:"fact" },
+  { t:"眼淚是鹹的。",                       a:"fact" },
+  { t:"牛奶含有豐富的鈣質。",               a:"fact" },
+  { t:"夏天的白天比冬天長。",               a:"fact" },
+  { t:"鳥類是從恐龍演化而來的。",           a:"fact" },
+  { t:"每個人的指紋都不同。",               a:"fact" },
+  { t:"海豚是哺乳類動物。",                 a:"fact" },
+  { t:"竹子是熊貓的主食。",                 a:"fact" },
+  { t:"雨水從雲層降落到地面。",             a:"fact" },
+  { t:"蜻蜓的幼蟲生活在水中。",             a:"fact" },
+  { t:"玻璃是用沙子製造的。",               a:"fact" },
+  { t:"蠶會吐絲結繭。",                     a:"fact" },
+  { t:"仙人掌生長在沙漠中。",               a:"fact" },
+  { t:"流星是隕石進入大氣層燃燒的現象。",   a:"fact" },
+  { t:"人類的舌頭能感受甜、鹹、酸、苦五種基本味道。", a:"fact" },
+  { t:"北極熊是白色的。",                   a:"fact" },
+  { t:"猴子是靈長類動物。",                 a:"fact" },
+  { t:"珊瑚礁是由珊瑚蟲建造的。",           a:"fact" },
+  { t:"熱氣球靠熱空氣上升。",               a:"fact" },
+  { t:"番茄在植物學上屬於水果。",           a:"fact" },
+  { t:"人的心臟在胸腔偏左邊。",             a:"fact" },
+  { t:"聲音不能在真空中傳播。",             a:"fact" },
+  { t:"巧克力的原料是可可豆。",             a:"fact" },
+  { t:"鯊魚是魚類，不是哺乳類。",           a:"fact" },
+  { t:"人眼看不到紫外線。",                 a:"fact" },
+  { t:"地球只有一顆天然衛星，叫做月亮。",   a:"fact" },
+  { t:"蝸牛背上的殼是牠身體的一部分。",     a:"fact" },
+
+  // ☁ 觀點 (50)
+  { t:"狗是最好的寵物。",                   a:"opinion" },
+  { t:"夏天比冬天好玩。",                   a:"opinion" },
+  { t:"數學是最難的科目。",                 a:"opinion" },
+  { t:"巧克力冰淇淋是最好吃的口味。",       a:"opinion" },
+  { t:"看書比看電視更有益。",               a:"opinion" },
+  { t:"貓咪比狗狗可愛。",                   a:"opinion" },
+  { t:"爬山是最好的運動。",                 a:"opinion" },
+  { t:"每個人都應該學會游泳。",             a:"opinion" },
+  { t:"卡通片比電影好看。",                 a:"opinion" },
+  { t:"海邊比山上更好玩。",                 a:"opinion" },
+  { t:"媽媽做的飯是最好吃的。",             a:"opinion" },
+  { t:"下雨天很無聊。",                     a:"opinion" },
+  { t:"科學課是最有趣的課。",               a:"opinion" },
+  { t:"長假期比短假期好。",                 a:"opinion" },
+  { t:"功課太多讓學生很痛苦。",             a:"opinion" },
+  { t:"藍色是最漂亮的顏色。",               a:"opinion" },
+  { t:"早起是個好習慣。",                   a:"opinion" },
+  { t:"城市比鄉村更好住。",                 a:"opinion" },
+  { t:"動物不應該被關在動物園裡。",         a:"opinion" },
+  { t:"春天是一年中最美的季節。",           a:"opinion" },
+  { t:"玫瑰花是最美麗的花。",               a:"opinion" },
+  { t:"老師是很辛苦的工作。",               a:"opinion" },
+  { t:"畫畫比寫字有趣。",                   a:"opinion" },
+  { t:"考試太多會讓學生有壓力。",           a:"opinion" },
+  { t:"番茄炒蛋是最好吃的家常菜。",         a:"opinion" },
+  { t:"兔子是最可愛的動物。",               a:"opinion" },
+  { t:"遊樂園是最好玩的地方。",             a:"opinion" },
+  { t:"幫助別人讓自己感覺快樂。",           a:"opinion" },
+  { t:"橘子比蘋果更好吃。",                 a:"opinion" },
+  { t:"童年是人生中最快樂的時光。",         a:"opinion" },
+  { t:"讀故事書比讀教科書更有趣。",         a:"opinion" },
+  { t:"雨天比晴天更適合在家休息。",         a:"opinion" },
+  { t:"早餐是一天中最重要的一餐。",         a:"opinion" },
+  { t:"電玩遊戲會讓小孩變懶。",             a:"opinion" },
+  { t:"學校應該有更多戶外教學。",           a:"opinion" },
+  { t:"貓頭鷹是最聰明的鳥。",               a:"opinion" },
+  { t:"每個孩子都應該學一種樂器。",         a:"opinion" },
+  { t:"足球比籃球更好看。",                 a:"opinion" },
+  { t:"古代比現代更有趣。",                 a:"opinion" },
+  { t:"睡前不應該看手機。",                 a:"opinion" },
+  { t:"超級英雄電影比科幻電影好看。",       a:"opinion" },
+  { t:"現在的孩子比以前的孩子幸福。",       a:"opinion" },
+  { t:"努力學習是成功的唯一方法。",         a:"opinion" },
+  { t:"機器人以後一定會取代很多工作。",     a:"opinion" },
+  { t:"每個人都有責任保護環境。",           a:"opinion" },
+  { t:"能說兩種語言的人比只說一種的人聰明。", a:"opinion" },
+  { t:"漫畫書應該放在學校圖書館裡。",       a:"opinion" },
+  { t:"自然課比體育課更重要。",             a:"opinion" },
+  { t:"小學生應該每天運動一小時。",         a:"opinion" },
+  { t:"好朋友比家人更了解你。",             a:"opinion" },
+];
+
+// ── Milestones ──────────────────────────────────────────
+const MILESTONES = [
+  { s:10,  e:"🌟", t:"初級偵探！",  sub:"棒極了！已答對10題！" },
+  { s:25,  e:"🔍", t:"資深偵探！",  sub:"厲害！答對25題了！" },
+  { s:50,  e:"🏆", t:"金牌偵探！",  sub:"過半了！你真的很強！" },
+  { s:75,  e:"🚀", t:"超級偵探！",  sub:"答對75題！超強大腦！" },
+  { s:100, e:"👑", t:"傳奇偵探！",  sub:"完美通關！你是事實大師！" },
+];
+
+// ── Audio ───────────────────────────────────────────────
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+function beep(freq, dur, type='sine', vol=0.3) {
+  try {
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.connect(g); g.connect(AC.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+    o.start(); o.stop(AC.currentTime + dur);
+  } catch(e){}
+}
+function playCorrect() { beep(523,0.12); setTimeout(()=>beep(659,0.12),120); setTimeout(()=>beep(784,0.2),240); }
+function playWrong()   { beep(220,0.3,'sawtooth',0.2); }
+function playMilestone(){ for(let i=0;i<6;i++) setTimeout(()=>beep(392+i*80,0.15),i*100); }
+
+// ── State ───────────────────────────────────────────────
+let questions=[], cur=0, score=0, streak=0, busy=false;
+const triggered = new Set();
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function startGame(){
+  questions = shuffle(ALL);
+  cur=0; score=0; streak=0; busy=false;
+  triggered.clear();
+  showScreen('s-game');
+  loadQ();
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function loadQ(){
+  if(cur>=questions.length){ endGame(); return; }
+  const q = questions[cur];
+  const qt = document.getElementById('q-text');
+  qt.style.animation='none'; qt.offsetHeight; qt.style.animation='slideUp 0.35s cubic-bezier(.4,0,.2,1)';
+  qt.textContent = q.t;
+  document.getElementById('q-num').textContent = `第 ${cur+1} 題`;
+  document.getElementById('btn-fact').disabled = false;
+  document.getElementById('btn-opinion').disabled = false;
+  updateHUD();
+}
+
+function updateHUD(){
+  document.getElementById('hud-score').textContent  = `⭐ ${score} 分`;
+  document.getElementById('hud-prog').textContent   = `第 ${Math.min(cur+1,100)} 題 / 100`;
+  document.getElementById('hud-streak').textContent = `🔥 連答 ${streak}`;
+  document.getElementById('prog-fill').style.width  = `${(cur/100)*100}%`;
+}
+
+function answer(choice){
+  if(busy) return;
+  busy = true;
+  document.getElementById('btn-fact').disabled = true;
+  document.getElementById('btn-opinion').disabled = true;
+
+  const q = questions[cur];
+  const ok = choice === q.a;
+  if(ok){ score++; streak++; playCorrect(); }
+  else   { streak=0; playWrong(); }
+  cur++;
+  updateHUD();
+
+  showFB(ok, q.a);
+  if(ok) checkMS(score);
+}
+
+const FB_CORRECT = ['答對了！','太厲害了！','完全正確！','很棒哦！','超聰明！'];
+function showFB(ok, correctType){
+  const el = document.getElementById('fb');
+  document.getElementById('fb-icon').textContent  = ok ? ['🎉','✨','⭐','🌟','💫'][Math.floor(Math.random()*5)] : '🤔';
+  document.getElementById('fb-label').textContent = ok ? FB_CORRECT[Math.floor(Math.random()*FB_CORRECT.length)] : '再想想看！';
+  document.getElementById('fb-explain').textContent = correctType==='fact'
+    ? (ok ? '這是「事實」— 可以查證的客觀資訊！' : '答案是「事實」— 這可以被查證確認哦！')
+    : (ok ? '這是「觀點」— 表達個人感受或想法！' : '答案是「觀點」— 不同人可以有不同看法！');
+  el.className = `feedback-layer ${ok?'correct':'wrong'} show`;
+  setTimeout(()=>{ el.className='feedback-layer'; busy=false; loadQ(); }, 1500);
+}
+
+function checkMS(s){
+  const m = MILESTONES.find(x=>x.s===s && !triggered.has(x.s));
+  if(!m) return;
+  triggered.add(s);
+  setTimeout(()=>showMS(m), 1700);
+}
+
+function showMS(m){
+  playMilestone();
+  document.getElementById('ms-emoji').textContent = m.e;
+  const mt = document.getElementById('ms-title');
+  mt.textContent = m.t;
+  const ms2 = document.getElementById('ms-sub');
+  ms2.textContent = m.sub;
+  // Re-trigger animation
+  document.getElementById('ms-emoji').style.animation='none';
+  document.getElementById('ms-emoji').offsetHeight;
+  document.getElementById('ms-emoji').style.animation='spinPop 0.6s cubic-bezier(.4,0,.2,1)';
+  document.getElementById('ms').classList.add('show');
+  startConfetti();
+  setTimeout(()=>{ document.getElementById('ms').classList.remove('show'); stopConfetti(); }, 3600);
+}
+
+// ── End ─────────────────────────────────────────────────
+function endGame(){
+  showScreen('s-end');
+  document.getElementById('end-score').textContent = score;
+
+  let rank;
+  if(score>=90)      rank={e:'👑',t:'傳奇事實大師！',  d:'完美得分！你對事實和觀點的判斷超精準，真是太厲害了！'};
+  else if(score>=75) rank={e:'🏆',t:'超級偵探！',      d:'非常出色！你已完全掌握分辨事實與觀點的能力！'};
+  else if(score>=60) rank={e:'🌟',t:'資深偵探！',      d:'很好的成績！繼續練習，就能更上一層樓！'};
+  else if(score>=45) rank={e:'🔍',t:'初級偵探！',      d:'還不錯！多練習幾次，你一定可以更厲害的！'};
+  else               rank={e:'📚',t:'努力學習中！',    d:'沒關係，每一次練習都讓你進步！加油！'};
+
+  document.getElementById('end-trophy').textContent = rank.e;
+  document.getElementById('rank-emoji').textContent  = rank.e;
+  document.getElementById('rank-title').textContent  = rank.t;
+  document.getElementById('rank-desc').textContent   = rank.d;
+
+  if(score>=60){ startConfetti(); setTimeout(stopConfetti, 5000); }
+}
+
+function restartGame(){ stopConfetti(); startGame(); }
+
+// ── Confetti ─────────────────────────────────────────────
+let rafId=null, particles=[];
+const COLORS=['#FFD700','#FF6B35','#2196F3','#E91E63','#4CAF50','#9C27B0','#FF9800','#00BCD4'];
+
+function startConfetti(){
+  const cvs=document.getElementById('cvs');
+  cvs.width=window.innerWidth; cvs.height=window.innerHeight;
+  const ctx=cvs.getContext('2d');
+  particles=[];
+  for(let i=0;i<180;i++){
+    particles.push({
+      x:Math.random()*cvs.width,
+      y:-10-Math.random()*250,
+      w:7+Math.random()*9,
+      h:4+Math.random()*5,
+      c:COLORS[Math.floor(Math.random()*COLORS.length)],
+      r:Math.random()*360,
+      rs:(Math.random()-0.5)*12,
+      vx:(Math.random()-0.5)*5,
+      vy:2.5+Math.random()*4.5,
+    });
+  }
+  function frame(){
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.r+=p.rs; p.vy+=0.06;
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.r*Math.PI/180);
+      ctx.fillStyle=p.c;
+      ctx.globalAlpha=Math.max(0, Math.min(1, (cvs.height-p.y)/200));
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+    });
+    particles=particles.filter(p=>p.y<cvs.height+20);
+    if(particles.length>0) rafId=requestAnimationFrame(frame);
+    else ctx.clearRect(0,0,cvs.width,cvs.height);
+  }
+  if(rafId) cancelAnimationFrame(rafId);
+  rafId=requestAnimationFrame(frame);
+}
+
+function stopConfetti(){
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  const cvs=document.getElementById('cvs');
+  cvs.getContext('2d').clearRect(0,0,cvs.width,cvs.height);
+  particles=[];
+}
+
+// Resume AudioContext on first interaction
+document.addEventListener('click', ()=>{ if(AC.state==='suspended') AC.resume(); }, {once:true});
+</script>
+</body>
+</html>
